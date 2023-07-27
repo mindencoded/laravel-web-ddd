@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\HomeController;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -16,3 +18,11 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/clear-cache', function () {
+    Artisan::call('cache:clear');
+    Artisan::call('route:clear');
+    return "Cache cleared successfully";
+ });
+
+Route::get('home', [HomeController::class, 'index']);
