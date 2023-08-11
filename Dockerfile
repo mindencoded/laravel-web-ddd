@@ -60,15 +60,15 @@ RUN echo "xdebug.client_host=192.168.12.120"        >> /usr/local/etc/php/conf.d
 
 RUN chown -R www-data:www-data /tmp
 
-#RUN composer install
+RUN composer install
 #COPY .env.example .env
 #RUN php artisan key:generate
 
-RUN composer require laravel/octane spiral/roadrunner-cli spiral/roadrunner-http
+#RUN composer require laravel/octane spiral/roadrunner-cli spiral/roadrunner-http
 RUN php artisan octane:install --server="roadrunner"
-RUN chmod +x www-data:www-data ./vendor/bin/rr
+RUN chmod +x ./vendor/bin/rr
 RUN ./vendor/bin/rr get-binary
-RUN php octane:start --server="roadrunner" --host="0.0.0.0" --rpc-port="6001" --port="80"
+#RUN php artisan octane:start --server="roadrunner" --host="0.0.0.0" --rpc-port="6001" --port="80"
 
 #RUN pecl install swoole
 #RUN php artisan octane:install --server="swoole"
