@@ -37,7 +37,7 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 # Copy existing application directory contents to the working directory
 COPY . /var/www/html
 
-# Assign permissions of the working directory to the www-data user
+# Assign permissions of the working directory to th e www-data user
 RUN chown -R www-data:www-data \
     /var/www/html/storage \
     /var/www/html/bootstrap/cache
@@ -45,6 +45,7 @@ RUN chown -R www-data:www-data \
 # Add xdebug
 RUN pecl install xdebug-3.2.2
 RUN docker-php-ext-enable xdebug
+RUN docker-php-ext-install sockets
 
 # Configure Xdebug
 RUN echo "xdebug.client_host=192.168.12.120"        >> /usr/local/etc/php/conf.d/xdebug.ini \
@@ -58,6 +59,23 @@ RUN echo "xdebug.client_host=192.168.12.120"        >> /usr/local/etc/php/conf.d
     && echo "xdebug.log=/tmp/xdebug.log"            >> /usr/local/etc/php/conf.d/xdebug.ini
 
 RUN chown -R www-data:www-data /tmp
+
+#RUN composer install
+#COPY .env.example .env
+#RUN php artisan key:generate
+
+RUN composer require laravel/octane spiral/roadrunner-cli spiral/roadrunner-http
+RUN php artisan octane:install --server="roadrunner"
+RUN chmod +x www-data:www-data ./vendor/bin/rr
+RUN ./vendor/bin/rr get-binary
+RUN php octane:start --server="roadrunner" --host="0.0.0.0" --rpc-port="6001" --port="80"
+
+#RUN pecl install swoole
+#RUN php artisan octane:install --server="swoole"
+
+
+
+#RUN php artisan octane:start --server="swoole" --host="0.0.0.0" 
 
 # Expose port 9000 and start php-fpm server (for FastCGI Process Manager)
 EXPOSE 9000
