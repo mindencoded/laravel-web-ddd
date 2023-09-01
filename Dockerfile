@@ -49,7 +49,6 @@ RUN docker-php-ext-install sockets
 
 # Configure Xdebug
 RUN echo "xdebug.client_host=192.168.12.120"        >> /usr/local/etc/php/conf.d/xdebug.ini \
-    #&& echo "xdebug.remote_enable=1"               >> /usr/local/etc/php/conf.d/xdebug.ini \
     && echo "xdebug.client_port=9000"               >> /usr/local/etc/php/conf.d/xdebug.ini \
     && echo "xdebug.start_with_request=yes"         >> /usr/local/etc/php/conf.d/xdebug.ini \
     && echo "xdebug.force_display_errors=1"         >> /usr/local/etc/php/conf.d/xdebug.ini \
@@ -64,19 +63,28 @@ RUN composer install
 #COPY .env.example .env
 #RUN php artisan key:generate
 
-#RUN composer require laravel/octane spiral/roadrunner-cli spiral/roadrunner-http
 RUN php artisan octane:install --server="roadrunner"
 RUN chmod +x ./vendor/bin/rr
-RUN ./vendor/bin/rr get-binary
-#RUN php artisan octane:start --server="roadrunner" --host="0.0.0.0" --rpc-port="6001" --port="80"
-
+RUN ./vendor/bin/rr get-binary --no-interaction
 #RUN pecl install swoole
 #RUN php artisan octane:install --server="swoole"
 
+ENV NODE_VERSION=18.17.1
+ENV NPM_VERSION=8.10.0
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+ENV NVM_DIR=/root/.nvm
+RUN . "$NVM_DIR/nvm.sh" && nvm install ${NODE_VERSION}
+RUN . "$NVM_DIR/nvm.sh" && nvm use v${NODE_VERSION}
+RUN . "$NVM_DIR/nvm.sh" && nvm alias default v${NODE_VERSION}
+ENV PATH="/root/.nvm/versions/node/v${NODE_VERSION}/bin/:${PATH}"
+RUN npm install -g npm@${NPM_VERSION}
+RUN npm install
 
-
-#RUN php artisan octane:start --server="swoole" --host="0.0.0.0" 
+#RUN php artisan octane:start --server="roadrunner" --host="0.0.0.0" --rpc-port="6001" --port="8000" --watch
+#RUN php artisan octane:start --server="swoole" --host="0.0.0.0" --watch
 
 # Expose port 9000 and start php-fpm server (for FastCGI Process Manager)
 EXPOSE 9000
 CMD ["php-fpm"]
+# Expose octane port 8000
+EXPOSE 8000

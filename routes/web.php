@@ -14,9 +14,11 @@ use App\Http\Controllers\HomeController;
 | be assigned to the "web" middleware group. Make something great!
 |
 */
+echo "Testing Octane";
 
 Route::get('/', function () {
-        return view('welcome');
+    echo "Testing Base Route";
+        //return view('welcome');
     });
 
 Route::get('/clear-cache', function () {
