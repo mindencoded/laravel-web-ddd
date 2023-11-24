@@ -26,11 +26,11 @@ services:
     restart: unless-stopped
     tty: true
     ports:
-      - "81:80"
-      - "444:443"
+      - "80:80"
+      - "443:443"
     volumes:
       - ./:/var/www/html/
-      - ./nginx/conf.d/:/etc/nginx/conf.d/
+      - ./nginx/octane.conf.d/:/etc/nginx/conf.d/
     networks:
       - app-network
   #MySQL Service
@@ -40,7 +40,7 @@ services:
     restart: unless-stopped
     tty: true
     ports:
-      - "3307:3306"
+      - "3306:3306"
     environment:
       MYSQL_DATABASE: laravel_web
       MYSQL_ROOT_PASSWORD: root

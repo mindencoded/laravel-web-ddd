@@ -49,7 +49,7 @@ RUN docker-php-ext-install sockets
 
 # Configure Xdebug
 RUN echo "xdebug.client_host=192.168.12.120"        >> /usr/local/etc/php/conf.d/xdebug.ini \
-    && echo "xdebug.client_port=9000"               >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.client_port=9001"               >> /usr/local/etc/php/conf.d/xdebug.ini \
     && echo "xdebug.start_with_request=yes"         >> /usr/local/etc/php/conf.d/xdebug.ini \
     && echo "xdebug.force_display_errors=1"         >> /usr/local/etc/php/conf.d/xdebug.ini \
     && echo "xdebug.remote_handler=dbgp"            >> /usr/local/etc/php/conf.d/xdebug.ini \
@@ -65,9 +65,11 @@ RUN composer install
 
 RUN php artisan octane:install --server="roadrunner"
 RUN chmod +x ./vendor/bin/rr
-RUN ./vendor/bin/rr get-binary --no-interaction
+RUN ./vendor/bin/rr get-binary --no-interaction \
+RUN echo "upstream octane-upstream { ip_hash; server 127.0.0.1:8000; keepalive 64; }" >> /etc/nginx/conf.d/upstream.conf
 #RUN pecl install swoole
 #RUN php artisan octane:install --server="swoole"
+#RUN echo "upstream swoole-upstream { server 127.0.0.1:1215; }" >> /etc/nginx/conf.d/upstream.conf
 
 ENV NODE_VERSION=18.17.1
 ENV NPM_VERSION=8.10.0
@@ -83,8 +85,6 @@ RUN npm install
 #RUN php artisan octane:start --server="roadrunner" --host="0.0.0.0" --rpc-port="6001" --port="8000" --watch
 #RUN php artisan octane:start --server="swoole" --host="0.0.0.0" --watch
 
-# Expose port 9000 and start php-fpm server (for FastCGI Process Manager)
-EXPOSE 9000
 CMD ["php-fpm"]
 # Expose octane port 8000
 EXPOSE 8000
