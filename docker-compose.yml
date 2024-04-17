@@ -6,7 +6,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: cloudsigma.com/php
     container_name: app
     restart: unless-stopped
     tty: true
@@ -30,7 +29,7 @@ services:
       - "443:443"
     volumes:
       - ./:/var/www/html/
-      - ./nginx/octane.conf.d/:/etc/nginx/conf.d/
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
     networks:
       - app-network
   #MySQL Service
@@ -42,7 +41,7 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_DATABASE: laravel_web
+      MYSQL_DATABASE: laravel_web_ddd
       MYSQL_ROOT_PASSWORD: root
       SERVICE_TAGS: dev
       SERVICE_NAME: mysql

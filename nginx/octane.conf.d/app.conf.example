@@ -12,16 +12,32 @@ http {
     gzip_types text/plain text/html text/css application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript;
     gzip_buffers 16 8k;
 
+    ssl_certificate /some/location/sillyfakesociety.com.bundle.crt;
+    ssl_certificate_key /some/location/sillyfakesociety.com.key;
+    ssl_protocols        SSLv3 TLSv1;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
     upstream octane_upstream {
         ip_hash; # session persistance
         server 127.0.0.1:61337;
+        server 127.0.0.1:61338;
         keepalive 64;
+    }
+
+    # Redirect non-www to www
+    server {
+        listen 80;
+        listen 443 ssl;
+
+        server_name sillyfakesociety.com;
+        return 301 $scheme://www.sillyfakesociety.com$request_uri;
     }
 
     server {
         listen 80;
+        listen 443 ssl;
 
-        server_name localhost;
+        server_name www.sillyfakesociety.com;
 
         # Handle static assets, but is up to You
         location ~ ^/(images/|img/|javascript/|js/|css/|stylesheets/|flash/|media/|static/|robots.txt|humans.txt|favicon.ico) {

@@ -1,5 +1,18 @@
 #https://www.cloudsigma.com/deploying-laravel-nginx-and-mysql-with-docker-compose/
+
+# Use the official PHP image
 FROM php:8.2-fpm
+
+# Set environment variables
+#ENV NVM_DIR /usr/local/nvm
+ENV NODE_VERSION=18.17.1
+ENV NPM_VERSION=8.10.0
+ENV NVM_DIR /root/.nvm
+ENV CLIENT_HOST=192.168.12.120
+ENV XDEBUG_CLIENT_PORT=9001
+ENV OCTANE_SERVER=roadrunner
+ENV OCTANE_PORT=8000
+ENV NGINX_CONFIG_PATH=./nginx/roadrunner.conf.d
 
 # Copy composer.lock and composer.json into the working directory
 COPY composer.lock composer.json /var/www/html/
@@ -7,7 +20,7 @@ COPY composer.lock composer.json /var/www/html/
 # Set working directory
 WORKDIR /var/www/html/
 
-# Install dependencies for the operating system software
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpng-dev \
@@ -21,70 +34,78 @@ RUN apt-get update && apt-get install -y \
     unzip \
     git \
     libonig-dev \
-    curl
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql mbstring zip exif pcntl gd
 
-# Install extensions for php
-RUN docker-php-ext-install pdo_mysql mbstring zip exif pcntl
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg
-RUN docker-php-ext-install gd
-
-# Install composer (php package manager)
+# Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Copy existing application directory contents to the working directory
+# Copy application files
 COPY . /var/www/html
 
-# Assign permissions of the working directory to th e www-data user
+# Set permissions
 RUN chown -R www-data:www-data \
     /var/www/html/storage \
-    /var/www/html/bootstrap/cache
+    /var/www/html/bootstrap/cache \
+    /tmp
 
-# Add xdebug
-RUN pecl install xdebug-3.2.2
-RUN docker-php-ext-enable xdebug
-RUN docker-php-ext-install sockets
+# Install Xdebug
+RUN pecl install xdebug-3.2.2 && docker-php-ext-enable xdebug && docker-php-ext-install sockets
+RUN echo "xdebug.client_host=${CLIENT_HOST}" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.client_port=${XDEBUG_CLIENT_PORT}" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.start_with_request=yes" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.force_display_errors=1" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.remote_handler=dbgp" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.mode=develop,debug,coverage" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.discover_client_host=0" >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo "xdebug.log=/tmp/xdebug.log" >> /usr/local/etc/php/conf.d/xdebug.ini
 
-# Configure Xdebug
-RUN echo "xdebug.client_host=192.168.12.120"        >> /usr/local/etc/php/conf.d/xdebug.ini \
-    && echo "xdebug.client_port=9001"               >> /usr/local/etc/php/conf.d/xdebug.ini \
-    && echo "xdebug.start_with_request=yes"         >> /usr/local/etc/php/conf.d/xdebug.ini \
-    && echo "xdebug.force_display_errors=1"         >> /usr/local/etc/php/conf.d/xdebug.ini \
-    && echo "xdebug.remote_handler=dbgp"            >> /usr/local/etc/php/conf.d/xdebug.ini \
-    && echo "xdebug.mode=develop,debug,coverage"    >> /usr/local/etc/php/conf.d/xdebug.ini \
-    && echo "xdebug.discover_client_host=0"         >> /usr/local/etc/php/conf.d/xdebug.ini \
-    && echo "xdebug.log=/tmp/xdebug.log"            >> /usr/local/etc/php/conf.d/xdebug.ini
 
-RUN chown -R www-data:www-data /tmp
-
-RUN composer install
 #COPY .env.example .env
 #RUN php artisan key:generate
+RUN composer install
 
-RUN php artisan octane:install --server="roadrunner"
-RUN chmod +x ./vendor/bin/rr
-RUN ./vendor/bin/rr get-binary --no-interaction \
-RUN echo "upstream octane-upstream { ip_hash; server 127.0.0.1:8000; keepalive 64; }" >> /etc/nginx/conf.d/upstream.conf
-#RUN pecl install swoole
-#RUN php artisan octane:install --server="swoole"
-#RUN echo "upstream swoole-upstream { server 127.0.0.1:1215; }" >> /etc/nginx/conf.d/upstream.conf
+COPY ${NGINX_CONFIG_PATH} /etc/nginx/conf.d
 
-ENV NODE_VERSION=18.17.1
-ENV NPM_VERSION=8.10.0
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
-ENV NVM_DIR=/root/.nvm
-RUN . "$NVM_DIR/nvm.sh" && nvm install ${NODE_VERSION}
-RUN . "$NVM_DIR/nvm.sh" && nvm use v${NODE_VERSION}
-RUN . "$NVM_DIR/nvm.sh" && nvm alias default v${NODE_VERSION}
-ENV PATH="/root/.nvm/versions/node/v${NODE_VERSION}/bin/:${PATH}"
-RUN npm install -g npm@${NPM_VERSION}
+# Install dependencies and set up Octane server
+RUN apt-get update && apt-get install -y \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && if [ "${OCTANE_SERVER}" = "roadrunner" ]; then \
+        php artisan octane:install --server="roadrunner" && \
+        chmod +x ./vendor/bin/rr && ./vendor/bin/rr get-binary --no-interaction && \
+        echo "upstream roadrunner_upstream { ip_hash; server 127.0.0.1:${OCTANE_PORT}; keepalive 64; }" >> /etc/nginx/conf.d/app.conf; \
+    elif [ "${OCTANE_SERVER}" = "swoole" ]; then \
+        pecl install swoole && \
+        php artisan octane:install --server="swoole" && \
+        echo "upstream swoole_upstream { server 127.0.0.1:${OCTANE_PORT}; }" >> /etc/nginx/conf.d/app.conf; \
+    else \
+        echo "No valid octane server specified"; \
+    fi
+
+# Install NVM and Node.js
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash \
+&& export NVM_DIR="${NVM_DIR}" \
+    && . "${NVM_DIR}/nvm.sh" \
+    && nvm install ${NODE_VERSION} \
+    && nvm alias default v${NODE_VERSION} \
+    && nvm use default
+
+# add node and npm to path so the commands are available
+ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
+ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
+
+# Install npm dependencies
 RUN npm install
 
 #RUN php artisan octane:start --server="roadrunner" --host="0.0.0.0" --rpc-port="6001" --port="8000" --watch
 #RUN php artisan octane:start --server="swoole" --host="0.0.0.0" --watch
 
+# Expose octane and xdebug ports
+EXPOSE ${OCTANE_PORT} ${XDEBUG_CLIENT_PORT}
+
+# Set the default command
 CMD ["php-fpm"]
-# Expose octane port 8000
-EXPOSE 8000
