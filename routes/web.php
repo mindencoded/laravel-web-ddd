@@ -14,12 +14,11 @@ use App\Http\Controllers\HomeController;
 | be assigned to the "web" middleware group. Make something great!
 |
 */
-echo "Testing Octane";
-
-Route::get('/', function () {
+echo "Testing From  External";
+Route::get('/', function (){
     echo "Testing Base Route";
-        //return view('welcome');
-    });
+    //return view('welcome');
+});
 
 Route::get('/clear-cache', function () {
     Artisan::call('cache:clear');
