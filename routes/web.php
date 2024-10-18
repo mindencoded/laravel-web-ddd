@@ -14,7 +14,7 @@ use App\Http\Controllers\HomeController;
 | be assigned to the "web" middleware group. Make something great!
 |
 */
-echo "Testing From  External";
+
 Route::get('/', function (){
     echo "Testing Base Route";
     //return view('welcome');
@@ -26,4 +26,4 @@ Route::get('/clear-cache', function () {
     return "Cache cleared successfully";
 });
 
-Route::get('home', [HomeController::class, 'index']);
+Route::get('/home', [HomeController::class, 'index'])->name('home');

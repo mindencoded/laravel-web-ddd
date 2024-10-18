@@ -41,8 +41,9 @@ RUN apt-get update && apt-get install -y \
     git \
     libonig-dev \
     curl \
+    libcurl4-openssl-dev \
+    libpq-dev \
     supervisor \
-    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
@@ -77,6 +78,7 @@ ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 # Copy application files
 COPY . /var/www/html
 
+#Copy environment file
 #COPY .env.example .env
 
 # Set permissions
@@ -87,32 +89,33 @@ RUN chown -R www-data:www-data \
 
 RUN chmod -R 777 /var/www/html/storage
 
-#RUN php artisan key:generate
 RUN composer install --no-dev --optimize-autoloader
 
-# Install dependencies and set up Octane server
-RUN if [ "${OCTANE_SERVER}" = "roadrunner" ]; then \
+#Create key app
+#RUN php artisan key:generate
+
+# Install npm dependencies
+RUN npm install
+
+SHELL ["/bin/bash", "-c"]
+
+RUN if [[ "${OCTANE_SERVER}" == "roadrunner" ]]; then \
         php artisan octane:install --server="roadrunner" && \
         chmod +x ./vendor/bin/rr && ./vendor/bin/rr get-binary --no-interaction; \
-    elif [ "${OCTANE_SERVER}" = "swoole" ]; then \
-        pecl install swoole && \
+    elif [[ "${OCTANE_SERVER}" == "swoole" ]]; then \
+        yes no | pecl install swoole && \
+        touch /usr/local/etc/php/conf.d/swoole.ini && \
+        echo 'extension=swoole.so' > /usr/local/etc/php/conf.d/swoole.ini && \
         php artisan octane:install --server="swoole"; \
     else \
         echo "No valid octane server."; \
     fi
 
-# Install npm dependencies
-RUN npm install
-
-#Copy Octane run script
-COPY start-$OCTANE_SERVER.sh /opt/src/scripts/start-octane.sh
-RUN chmod +x /opt/src/scripts/start-octane.sh
-
-# Expose octane and xdebug ports
+# Expose octane-start-server and xdebug ports
 EXPOSE ${XDEBUG_CLIENT_PORT} ${OCTANE_PROXY_PORT} ${OCTANE_RPC_PORT}
 
-# Set the default command
+#Run FastCGI Process Manager (FPM)
 CMD ["php-fpm"]
 
-# Run Octane proxy
-CMD ["/opt/src/scripts/start-octane.sh"]
+#Run Octane Server
+CMD php artisan octane:start --server=${OCTANE_SERVER} --host=0.0.0.0 --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch
