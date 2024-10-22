@@ -14,10 +14,10 @@ use App\Http\Controllers\HomeController;
 | be assigned to the "web" middleware group. Make something great!
 |
 */
+$myStartTime = microtime(true);
 
-Route::get('/', function (){
-    echo "Testing Base Route";
-    //return view('welcome');
+Route::get('/', function () use ($myStartTime) {
+    return DateTime::createFromFormat('U.u', $myStartTime)->format("r (u)");
 });
 
 Route::get('/clear-cache', function () {

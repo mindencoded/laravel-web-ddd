@@ -118,4 +118,5 @@ EXPOSE ${XDEBUG_CLIENT_PORT} ${OCTANE_PROXY_PORT} ${OCTANE_RPC_PORT}
 CMD ["php-fpm"]
 
 #Run Octane Server
-CMD php artisan octane:start --server=${OCTANE_SERVER} --host=0.0.0.0 --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch
+CMD bash -c 'if [[ "${OCTANE_SERVER}" == "roadrunner" || "${OCTANE_SERVER}" == "swoole" ]]; then php artisan octane:start --server=${OCTANE_SERVER} --host=0.0.0.0 --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch; fi'
+
