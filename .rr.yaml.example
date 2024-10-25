@@ -17,7 +17,9 @@ http:
       - .php
       - .htaccess
   pool:
-    num_workers: 1
+    debug: true
+    num_workers: 100
+    allocate_timeout: '1h'
     supervisor:
       max_worker_memory: 100
 jobs:
@@ -32,3 +34,6 @@ kv:
       interval: 60
 metrics:
   address: '127.0.0.1:2112'
+logs:
+  level: debug
+  mode: development
