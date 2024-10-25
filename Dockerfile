@@ -3,6 +3,7 @@
 # Use the official PHP image
 FROM php:8.2-fpm
 
+ARG APP_DEBUG
 ARG OCTANE_SERVER
 ARG OCTANE_PROXY_PORT
 ARG OCTANE_RPC_PORT
@@ -10,15 +11,17 @@ ARG XDEBUG_CLIENT_HOST
 ARG XDEBUG_CLIENT_PORT
 
 # Set environment variables
+ENV APP_DEBUG=$APP_DEBUG
 ENV NODE_VERSION=18.17.1
 ENV NPM_VERSION=8.10.0
-ENV NVM_DIR /root/.nvm
+ENV NVM_DIR=/root/.nvm
 ENV XDEBUG_CLIENT_HOST=$XDEBUG_CLIENT_HOST
 ENV XDEBUG_CLIENT_PORT=$XDEBUG_CLIENT_PORT
 ENV OCTANE_SERVER=$OCTANE_SERVER
 ENV OCTANE_PROXY_PORT=$OCTANE_PROXY_PORT
 ENV OCTANE_RPC_PORT=$OCTANE_RPC_PORT
 ENV XDEBUG_CONFIG_FILE=/usr/local/etc/php/conf.d/xdebug.ini
+ENV NPM_VERSION="10.9.0"
 
 # Copy composer.lock and composer.json into the working directory
 COPY composer.lock composer.json /var/www/html/
@@ -60,8 +63,12 @@ RUN echo "xdebug.client_host=${XDEBUG_CLIENT_HOST}" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.force_display_errors=1" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.remote_handler=dbgp" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.mode=develop,debug,coverage" >> ${XDEBUG_CONFIG_FILE} \
-    && echo "xdebug.discover_client_host=0" >> ${XDEBUG_CONFIG_FILE} \
+    && echo "xdebug.discover_client_host=yes" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.log=/tmp/xdebug.log" >> ${XDEBUG_CONFIG_FILE}
+
+RUN touch /tmp/xdebug.log \
+    && chown www-data:www-data /tmp/xdebug.log \
+    && chmod 777 /tmp/xdebug.log
 
 # Install NVM and Node.js
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash \
@@ -83,19 +90,26 @@ COPY . /var/www/html
 
 # Set permissions
 RUN chown -R www-data:www-data \
-    /var/www/html/storage \
-    /var/www/html/bootstrap/cache \
-    /tmp
+  /var/www/html/storage \
+  /var/www/html/bootstrap/cache \
+  /tmp \
+  && chmod -R 777 \
+  /var/www/html/storage \
+  /var/www/html/bootstrap/cache \
+  /tmp
 
-RUN chmod -R 777 /var/www/html/storage
-
-RUN composer install --no-dev --optimize-autoloader
-
+RUN composer install --no-dev --optimize-autoloader  \
+    && composer dump-autoload \
+    && php artisan cache:clear
 #Create key app
 #RUN php artisan key:generate
 
 # Install npm dependencies
-RUN npm install
+RUN rm -rf node_modules \
+    && rm package-lock.json \
+    && npm install -g npm@${NPM_VERSION} \
+    && npm install \
+    && npm install -g chokidar-cli
 
 SHELL ["/bin/bash", "-c"]
 
@@ -111,6 +125,10 @@ RUN if [[ "${OCTANE_SERVER}" == "roadrunner" ]]; then \
         echo "No valid octane server."; \
     fi
 
+# Supervisor config
+COPY /supervisor/conf.d /etc/supervisor/conf.d/
+RUN echo "command = php /var/www/html/artisan octane:start --server=${OCTANE_SERVER} --host=0.0.0.0 --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch" >> /etc/supervisor/conf.d/laravel-octane.conf
+
 # Expose octane-start-server and xdebug ports
 EXPOSE ${XDEBUG_CLIENT_PORT} ${OCTANE_PROXY_PORT} ${OCTANE_RPC_PORT}
 
@@ -118,5 +136,10 @@ EXPOSE ${XDEBUG_CLIENT_PORT} ${OCTANE_PROXY_PORT} ${OCTANE_RPC_PORT}
 CMD ["php-fpm"]
 
 #Run Octane Server
-CMD bash -c 'if [[ "${OCTANE_SERVER}" == "roadrunner" || "${OCTANE_SERVER}" == "swoole" ]]; then php artisan octane:start --server=${OCTANE_SERVER} --host=0.0.0.0 --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch; fi'
+#CMD php artisan octane:start --server=${OCTANE_SERVER} --host=0.0.0.0 --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch
+
+#Run Supervisor
+CMD ["/usr/bin/supervisord"]
+
+
 

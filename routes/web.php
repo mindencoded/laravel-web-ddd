@@ -16,7 +16,7 @@ use App\Http\Controllers\HomeController;
 */
 $myStartTime = microtime(true);
 
-Route::get('/', function () use ($myStartTime) {
+Route::get('/', static function () use ($myStartTime) {
     return DateTime::createFromFormat('U.u', $myStartTime)->format("r (u)");
 });
 
