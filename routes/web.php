@@ -20,10 +20,4 @@ Route::get('/', static function () use ($myStartTime) {
     return DateTime::createFromFormat('U.u', $myStartTime)->format("r (u)");
 });
 
-Route::get('/clear-cache', function () {
-    Artisan::call('cache:clear');
-    Artisan::call('route:clear');
-    return "Cache cleared successfully";
-});
-
 Route::get('/home', [HomeController::class, 'index'])->name('home');

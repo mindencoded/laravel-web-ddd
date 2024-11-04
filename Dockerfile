@@ -1,9 +1,8 @@
-#https://www.cloudsigma.com/deploying-laravel-nginx-and-mysql-with-docker-compose/
-
-# Use the official PHP image
 FROM php:8.2-fpm
 
+ARG APP_PORT
 ARG APP_DEBUG
+ARG OCTANE_HOST
 ARG OCTANE_SERVER
 ARG OCTANE_PROXY_PORT
 ARG OCTANE_RPC_PORT
@@ -11,17 +10,19 @@ ARG XDEBUG_CLIENT_HOST
 ARG XDEBUG_CLIENT_PORT
 
 # Set environment variables
+ENV APP_PORT=$APP_PORT
 ENV APP_DEBUG=$APP_DEBUG
 ENV NODE_VERSION=18.17.1
 ENV NPM_VERSION=8.10.0
 ENV NVM_DIR=/root/.nvm
 ENV XDEBUG_CLIENT_HOST=$XDEBUG_CLIENT_HOST
 ENV XDEBUG_CLIENT_PORT=$XDEBUG_CLIENT_PORT
+ENV OCTANE_HOST=$OCTANE_HOST
 ENV OCTANE_SERVER=$OCTANE_SERVER
 ENV OCTANE_PROXY_PORT=$OCTANE_PROXY_PORT
 ENV OCTANE_RPC_PORT=$OCTANE_RPC_PORT
 ENV XDEBUG_CONFIG_FILE=/usr/local/etc/php/conf.d/xdebug.ini
-ENV NPM_VERSION="10.9.0"
+ENV NPM_VERSION=10.9.0
 
 # Copy composer.lock and composer.json into the working directory
 COPY composer.lock composer.json /var/www/html/
@@ -115,7 +116,9 @@ SHELL ["/bin/bash", "-c"]
 
 RUN if [[ "${OCTANE_SERVER}" == "roadrunner" ]]; then \
         php artisan octane:install --server="roadrunner" && \
-        chmod +x ./vendor/bin/rr && ./vendor/bin/rr get-binary --no-interaction; \
+        chmod +x ./vendor/bin/rr && \
+        ./vendor/bin/rr get-binary --no-interaction && \
+        chmod +x ./rr; \
     elif [[ "${OCTANE_SERVER}" == "swoole" ]]; then \
         yes no | pecl install swoole && \
         touch /usr/local/etc/php/conf.d/swoole.ini && \
@@ -127,7 +130,7 @@ RUN if [[ "${OCTANE_SERVER}" == "roadrunner" ]]; then \
 
 # Supervisor config
 COPY /supervisor/conf.d /etc/supervisor/conf.d/
-RUN echo "command = php /var/www/html/artisan octane:start --server=${OCTANE_SERVER} --host=0.0.0.0 --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch" >> /etc/supervisor/conf.d/laravel-octane.conf
+RUN echo "command = php -d variables_order=EGPCS /var/www/html/artisan octane:start --server=${OCTANE_SERVER} --host=${OCTANE_HOST} --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch" >> /etc/supervisor/conf.d/laravel-octane.conf
 
 # Expose octane-start-server and xdebug ports
 EXPOSE ${XDEBUG_CLIENT_PORT} ${OCTANE_PROXY_PORT} ${OCTANE_RPC_PORT}
@@ -136,10 +139,12 @@ EXPOSE ${XDEBUG_CLIENT_PORT} ${OCTANE_PROXY_PORT} ${OCTANE_RPC_PORT}
 CMD ["php-fpm"]
 
 #Run Octane Server
-#CMD php artisan octane:start --server=${OCTANE_SERVER} --host=0.0.0.0 --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch
+#CMD php -d variables_order=EGPCS artisan octane:start --server=${OCTANE_SERVER} --host=${OCTANE_HOST} --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch
+
+#php -d variables_order=EGPCS artisan octane:start --server=roadrunner --host=0.0.0.0 --rpc-port=6001 --port=8000 --watch
 
 #Run Supervisor
-CMD ["/usr/bin/supervisord"]
+#CMD ["/usr/bin/supervisord"]
 
 
 
