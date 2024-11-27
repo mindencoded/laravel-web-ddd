@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.3.3-fpm
 
 ARG APP_PORT
 ARG APP_DEBUG
@@ -13,7 +13,7 @@ ARG XDEBUG_CLIENT_PORT
 ENV APP_PORT=$APP_PORT
 ENV APP_DEBUG=$APP_DEBUG
 ENV NODE_VERSION=18.17.1
-ENV NPM_VERSION=8.10.0
+ENV NPM_VERSION=10.9.0
 ENV NVM_DIR=/root/.nvm
 ENV XDEBUG_CLIENT_HOST=$XDEBUG_CLIENT_HOST
 ENV XDEBUG_CLIENT_PORT=$XDEBUG_CLIENT_PORT
@@ -22,7 +22,6 @@ ENV OCTANE_SERVER=$OCTANE_SERVER
 ENV OCTANE_PROXY_PORT=$OCTANE_PROXY_PORT
 ENV OCTANE_RPC_PORT=$OCTANE_RPC_PORT
 ENV XDEBUG_CONFIG_FILE=/usr/local/etc/php/conf.d/xdebug.ini
-ENV NPM_VERSION=10.9.0
 
 # Copy composer.lock and composer.json into the working directory
 COPY composer.lock composer.json /var/www/html/
@@ -57,7 +56,7 @@ RUN docker-php-ext-install pdo_mysql mbstring zip exif pcntl gd
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Install Xdebug
-RUN pecl install xdebug-3.2.2 && docker-php-ext-enable xdebug && docker-php-ext-install sockets
+RUN pecl install xdebug-3.3.2 && docker-php-ext-enable xdebug && docker-php-ext-install sockets
 RUN echo "xdebug.client_host=${XDEBUG_CLIENT_HOST}" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.client_port=${XDEBUG_CLIENT_PORT}" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.start_with_request=yes" >> ${XDEBUG_CONFIG_FILE} \
@@ -89,6 +88,8 @@ COPY . /var/www/html
 #Copy environment file
 #COPY .env.example .env
 
+SHELL ["/bin/bash", "-c"]
+
 # Set permissions
 RUN chown -R www-data:www-data \
   /var/www/html/storage \
@@ -99,26 +100,18 @@ RUN chown -R www-data:www-data \
   /var/www/html/bootstrap/cache \
   /tmp
 
-RUN composer install --no-dev --optimize-autoloader  \
-    && composer dump-autoload \
-    && php artisan cache:clear
+RUN git config --global --add safe.directory /var/www/html
+
+RUN composer install --no-dev --optimize-autoloader
 #Create key app
 #RUN php artisan key:generate
 
-# Install npm dependencies
-RUN rm -rf node_modules \
-    && rm package-lock.json \
-    && npm install -g npm@${NPM_VERSION} \
-    && npm install \
-    && npm install -g chokidar-cli
-
-SHELL ["/bin/bash", "-c"]
-
 RUN if [[ "${OCTANE_SERVER}" == "roadrunner" ]]; then \
+        composer require laravel/octane spiral/roadrunner-cli spiral/roadrunner-http && \
         php artisan octane:install --server="roadrunner" && \
         chmod +x ./vendor/bin/rr && \
         ./vendor/bin/rr get-binary --no-interaction && \
-        chmod +x ./rr; \
+        chmod +x ./vendor/bin/roadrunner-worker; \
     elif [[ "${OCTANE_SERVER}" == "swoole" ]]; then \
         yes no | pecl install swoole && \
         touch /usr/local/etc/php/conf.d/swoole.ini && \
@@ -127,6 +120,17 @@ RUN if [[ "${OCTANE_SERVER}" == "roadrunner" ]]; then \
     else \
         echo "No valid octane server."; \
     fi
+
+#Clean composer packages
+RUN composer dump-autoload \
+    && php artisan cache:clear
+
+# Install npm dependencies
+RUN rm -rf node_modules \
+    && rm package-lock.json \
+    && npm install -g npm@${NPM_VERSION} \
+    && npm install \
+    && npm install -g chokidar-cli
 
 # Supervisor config
 COPY /supervisor/conf.d /etc/supervisor/conf.d/

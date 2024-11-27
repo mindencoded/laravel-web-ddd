@@ -21,6 +21,7 @@ services:
         environment:
             SERVICE_NAME: app
             SERVICE_TAGS: dev
+            SUPERVISOR_PHP_COMMAND: "php -d variables_order=EGPCS /var/www/html/artisan octane:start --server='${OCTANE_SERVER:-roadrunner}' --host='${OCTANE_HOST:-0.0.0.0}' --rpc-port='${OCTANE_RPC_PORT:-6001}' --port='${OCTANE_PROXY_PORT:-8000}'"
         working_dir: /var/www/html/
         volumes:
             - ./:/var/www/html/

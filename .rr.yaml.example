@@ -1,5 +1,50 @@
 version: '3'
 rpc:
+  listen: tcp://127.0.0.1:6001
+server:
+  command: "php -d variables_order=EGPCS artisan octane:start --server=roadrunner"
+  relay: pipes
+  env:
+    - XDEBUG_SESSION: '1'
+http:
+  address: 0.0.0.0:8000
+  fcgi:
+    address: tcp://0.0.0.0:9001
+  middleware:
+    - gzip
+    - static
+  static:
+    dir: public
+    forbid:
+      - .php
+      - .htaccess
+  pool:
+    debug: true
+    num_workers: 100
+    allocate_timeout: '40s'
+    max_jobs: 250
+    supervisor:
+      max_worker_memory: 100
+      exec_ttl: '90s'
+jobs:
+  pool:
+    num_workers: 2
+    max_worker_memory: 100
+kv:
+  local:
+    driver: memory
+    config:
+      interval: 60
+metrics:
+  address: 127.0.0.1:2112
+status:
+  address: 127.0.0.1:2114
+logs:
+  mode: development
+  level: debug
+================================================================
+version: '3'
+rpc:
   listen: 'tcp://127.0.0.1:6001'
 server:
   command: 'php app.php'
@@ -37,3 +82,69 @@ metrics:
 logs:
   level: debug
   mode: development
+================================================================
+version: '3'
+server:
+  command: "php vendor/bin/roadrunner-worker"
+  env:
+    - XDEBUG_SESSION: '1'  # Desactivar en producción
+http:
+  address: 0.0.0.0:8000
+  fcgi:
+    address: tcp://0.0.0.0:9001
+  middleware: [ "static", "gzip", "headers" ]
+  max_request_size: 20
+  static:
+    dir: public
+  pool:
+    debug: true
+    num_workers: 2
+    allocate_timeout: 30s
+    max_jobs: 90
+    max_worker_memory: 256
+    supervisor:
+      exec_ttl: 60s
+jobs:
+  num_pollers: 16
+  timeout: 240
+  pool:
+    num_workers: 2
+    max_worker_memory: 256
+    debug: true
+    max_jobs: 100
+    allocate_timeout: 30s
+kv:
+  local:
+    driver: memory
+    config:
+      interval: 60
+logs:
+  mode: development
+  level: debug
+==================================
+version: '3'
+http:
+  address: 127.0.0.1:8000
+  pool:
+    num_workers: 4           # Ajustado según el número de CPU
+    max_jobs: 500            # Número máximo de trabajos antes de reiniciar el worker
+    supervisor:
+      exec_ttl: 30s          # Tiempo de vida del worker
+  static:
+    dir: public              # Ruta estática para archivos públicos
+  middleware:
+    - 'static'               # Middleware estático
+    # Agrega aquí otros middleware si es necesario
+
+server:
+  command: 'php ./vendor/bin/roadrunner-worker'  # Comando para iniciar el worker
+
+rpc:
+  listen: tcp://127.0.0.1:6001  # Puerto para RPC, usado por Roadrunner y Laravel Octane
+
+logs:
+  mode: production             # Modo de log para producción
+  level: debug                 # Nivel de detalle del log
+  output: /var/log/roadrunner.log  # Archivos de log, no en stdout
+  encoding: json
+
