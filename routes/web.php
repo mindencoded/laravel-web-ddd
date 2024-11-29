@@ -21,7 +21,16 @@ if (config('app.debug') === true) {
         Artisan::call('config:clear');
         Artisan::call('route:clear');
         Artisan::call('view:clear');
+        Artisan::call('config:cache');
+        Artisan::call('route:cache');
         return "All cleared!";
+    });
+
+    Route::get('/optimize', static function () {
+        Artisan::call('clear-compiled');
+        //exec('composer dump-autoload');
+        Artisan::call('optimize');
+        return "All optimized!";
     });
 
     Route::get('/routes-clear', static function () {
@@ -34,12 +43,10 @@ $myStartTime = microtime(true);
 
 Route::get('/', static function () use ($myStartTime) {
     $myLocalStartTime = microtime(true);
-    $basePath = $_SERVER['APP_BASE_PATH'] ?? $_ENV['APP_BASE_PATH'] ?? $serverState['octaneConfig']['base_path'] ?? null;
-    return $basePath;
-    /*return DateTime::createFromFormat('U.u', $myStartTime)
+    return DateTime::createFromFormat('U.u', $myStartTime)
             ->format("r (u)") . " - " .
         DateTime::createFromFormat('U.u', $myLocalStartTime)
-            ->format("r (u)");*/
+            ->format("r (u)");
 });
 
 Route::get('/home', [HomeController::class, 'index'])->name('home');

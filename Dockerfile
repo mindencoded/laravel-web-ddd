@@ -58,12 +58,13 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 # Install Xdebug
 RUN pecl install xdebug-3.3.2 && docker-php-ext-enable xdebug && docker-php-ext-install sockets
 RUN echo "xdebug.client_host=${XDEBUG_CLIENT_HOST}" >> ${XDEBUG_CONFIG_FILE} \
+    && echo "xdebug.idekey=docker" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.client_port=${XDEBUG_CLIENT_PORT}" >> ${XDEBUG_CONFIG_FILE} \
-    && echo "xdebug.start_with_request=yes" >> ${XDEBUG_CONFIG_FILE} \
+    && echo "xdebug.start_with_request=1" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.force_display_errors=1" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.remote_handler=dbgp" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.mode=develop,debug,coverage" >> ${XDEBUG_CONFIG_FILE} \
-    && echo "xdebug.discover_client_host=yes" >> ${XDEBUG_CONFIG_FILE} \
+    && echo "xdebug.discover_client_host=1" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.log=/tmp/xdebug.log" >> ${XDEBUG_CONFIG_FILE}
 
 RUN touch /tmp/xdebug.log \
@@ -88,8 +89,6 @@ COPY . /var/www/html
 #Copy environment file
 #COPY .env.example .env
 
-SHELL ["/bin/bash", "-c"]
-
 # Set permissions
 RUN chown -R www-data:www-data \
   /var/www/html/storage \
@@ -100,9 +99,15 @@ RUN chown -R www-data:www-data \
   /var/www/html/bootstrap/cache \
   /tmp
 
+SHELL ["/bin/bash", "-c"]
+
 RUN git config --global --add safe.directory /var/www/html
 
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install \
+    --no-interaction \
+    --no-dev \
+    --optimize-autoloader \
+
 #Create key app
 #RUN php artisan key:generate
 
@@ -144,11 +149,10 @@ CMD ["php-fpm"]
 
 #Run Octane Server
 #CMD php -d variables_order=EGPCS artisan octane:start --server=${OCTANE_SERVER} --host=${OCTANE_HOST} --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch
-
 #php -d variables_order=EGPCS artisan octane:start --server=roadrunner --host=0.0.0.0 --rpc-port=6001 --port=8000 --watch
 
 #Run Supervisor
-#CMD ["/usr/bin/supervisord"]
+CMD ["/usr/bin/supervisord"]
 
 
 
