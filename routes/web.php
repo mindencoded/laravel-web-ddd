@@ -1,7 +1,7 @@
 <?php
 
+use App\MyClass;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\HomeController;
 
 /*
@@ -15,30 +15,6 @@ use App\Http\Controllers\HomeController;
 |
 */
 
-if (config('app.debug') === true) {
-    Route::get('/clear', static function () {
-        Artisan::call('cache:clear');
-        Artisan::call('config:clear');
-        Artisan::call('route:clear');
-        Artisan::call('view:clear');
-        Artisan::call('config:cache');
-        Artisan::call('route:cache');
-        return "All cleared!";
-    });
-
-    Route::get('/optimize', static function () {
-        Artisan::call('clear-compiled');
-        //exec('composer dump-autoload');
-        Artisan::call('optimize');
-        return "All optimized!";
-    });
-
-    Route::get('/routes-clear', static function () {
-        Artisan::call('route:clear');
-        return "Routes cached successfully.";
-    });
-}
-
 $myStartTime = microtime(true);
 
 Route::get('/', static function () use ($myStartTime) {
@@ -47,6 +23,13 @@ Route::get('/', static function () use ($myStartTime) {
             ->format("r (u)") . " - " .
         DateTime::createFromFormat('U.u', $myLocalStartTime)
             ->format("r (u)");
+});
+
+Route::get('/static-class', static function (MyClass $myClass) {
+    //xdebug_break();
+    $myClass->add();
+    print $myClass->get();
+    return false;
 });
 
 Route::get('/home', [HomeController::class, 'index'])->name('home');

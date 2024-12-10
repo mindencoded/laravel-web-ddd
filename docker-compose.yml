@@ -40,7 +40,7 @@ services:
             - "${SSL_PORT:-443}:443"
         volumes:
             - ./:/var/www/html/
-            - ./nginx/conf.d/:/etc/nginx/conf.d/
+            - ./nginx/octane.conf.d/:/etc/nginx/conf.d/
         networks:
             - app-network
     #MySQL Service

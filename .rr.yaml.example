@@ -3,7 +3,7 @@ rpc:
   listen: tcp://127.0.0.1:6001
 server:
   command: "php vendor/bin/roadrunner-worker"
-  #command: 'php -d variables_order=EGPCS artisan octane:start --server=roadrunner --host=0.0.0.0 --rpc-port=6001 --port=8000'
+  #command: "php -d variables_order=EGPCS artisan octane:start --server=roadrunner --host=0.0.0.0 --rpc-port=6001 --port=8000 --watch"
   relay: pipes
   env:
     - XDEBUG_SESSION: '1'

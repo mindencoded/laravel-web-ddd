@@ -13,7 +13,7 @@ ARG XDEBUG_CLIENT_PORT
 ENV APP_PORT=$APP_PORT
 ENV APP_DEBUG=$APP_DEBUG
 ENV NODE_VERSION=18.17.1
-ENV NPM_VERSION=10.9.0
+ENV NPM_VERSION=10.9.1
 ENV NVM_DIR=/root/.nvm
 ENV XDEBUG_CLIENT_HOST=$XDEBUG_CLIENT_HOST
 ENV XDEBUG_CLIENT_PORT=$XDEBUG_CLIENT_PORT
@@ -60,11 +60,11 @@ RUN pecl install xdebug-3.3.2 && docker-php-ext-enable xdebug && docker-php-ext-
 RUN echo "xdebug.client_host=${XDEBUG_CLIENT_HOST}" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.idekey=docker" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.client_port=${XDEBUG_CLIENT_PORT}" >> ${XDEBUG_CONFIG_FILE} \
-    && echo "xdebug.start_with_request=1" >> ${XDEBUG_CONFIG_FILE} \
+    && echo "xdebug.start_with_request=yes" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.force_display_errors=1" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.remote_handler=dbgp" >> ${XDEBUG_CONFIG_FILE} \
-    && echo "xdebug.mode=develop,debug,coverage" >> ${XDEBUG_CONFIG_FILE} \
-    && echo "xdebug.discover_client_host=1" >> ${XDEBUG_CONFIG_FILE} \
+    && echo "xdebug.mode=debug" >> ${XDEBUG_CONFIG_FILE} \
+    && echo "xdebug.discover_client_host=false" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.log=/tmp/xdebug.log" >> ${XDEBUG_CONFIG_FILE}
 
 RUN touch /tmp/xdebug.log \
@@ -86,6 +86,8 @@ ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 # Copy application files
 COPY . /var/www/html
 
+WORKDIR /var/www/html
+
 #Copy environment file
 #COPY .env.example .env
 
@@ -106,7 +108,7 @@ RUN git config --global --add safe.directory /var/www/html
 RUN composer install \
     --no-interaction \
     --no-dev \
-    --optimize-autoloader \
+    --optimize-autoloader
 
 #Create key app
 #RUN php artisan key:generate
@@ -118,17 +120,19 @@ RUN if [[ "${OCTANE_SERVER}" == "roadrunner" ]]; then \
         ./vendor/bin/rr get-binary --no-interaction && \
         chmod +x ./vendor/bin/roadrunner-worker; \
     elif [[ "${OCTANE_SERVER}" == "swoole" ]]; then \
+        composer require laravel/octane && \
         yes no | pecl install swoole && \
         touch /usr/local/etc/php/conf.d/swoole.ini && \
         echo 'extension=swoole.so' > /usr/local/etc/php/conf.d/swoole.ini && \
         php artisan octane:install --server="swoole"; \
     else \
-        echo "No valid octane server."; \
+        composer require laravel/octane; \
     fi
 
 #Clean composer packages
-RUN composer dump-autoload \
-    && php artisan cache:clear
+RUN php artisan clear-compiled \
+    && composer dump-autoload \
+    && php artisan optimize
 
 # Install npm dependencies
 RUN rm -rf node_modules \
@@ -144,15 +148,11 @@ RUN echo "command = php -d variables_order=EGPCS /var/www/html/artisan octane:st
 # Expose octane-start-server and xdebug ports
 EXPOSE ${XDEBUG_CLIENT_PORT} ${OCTANE_PROXY_PORT} ${OCTANE_RPC_PORT}
 
-#Run FastCGI Process Manager (FPM)
-CMD ["php-fpm"]
-
 #Run Octane Server
-#CMD php -d variables_order=EGPCS artisan octane:start --server=${OCTANE_SERVER} --host=${OCTANE_HOST} --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch
-#php -d variables_order=EGPCS artisan octane:start --server=roadrunner --host=0.0.0.0 --rpc-port=6001 --port=8000 --watch
+CMD php -d variables_order=EGPCS artisan octane:start --server=${OCTANE_SERVER} --host=${OCTANE_HOST} --rpc-port=${OCTANE_RPC_PORT} --port=${OCTANE_PROXY_PORT} --watch
 
 #Run Supervisor
-CMD ["/usr/bin/supervisord"]
+#CMD ["/usr/bin/supervisord"]
 
 
 

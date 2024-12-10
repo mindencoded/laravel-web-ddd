@@ -35,6 +35,12 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
+
+            if (config('app.debug') === true) {
+                Route::middleware('debug')
+                    ->prefix('debug')
+                    ->group(base_path('routes/debug.php'));
+            }
         });
     }
 }
