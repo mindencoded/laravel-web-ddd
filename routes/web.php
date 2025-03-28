@@ -29,7 +29,7 @@ Route::get('/static-class', static function (MyClass $myClass) {
     //xdebug_break();
     $myClass->add();
     print $myClass->get();
-    return false;
+    return true;
 });
 
 Route::get('/home', [HomeController::class, 'index'])->name('home');

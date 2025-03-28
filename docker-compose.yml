@@ -6,14 +6,15 @@ services:
         build:
             context: .
             args:
+                APP_DEBUG: "${APP_DEBUG}"
+                APP_PORT: "${APP_PORT}"
                 XDEBUG_CLIENT_PORT: "${XDEBUG_CLIENT_PORT}"
                 XDEBUG_CLIENT_HOST: "${XDEBUG_CLIENT_HOST}"
+                OCTANE_ENABLED: "${OCTANE_ENABLED}"
                 OCTANE_HOST: "${OCTANE_HOST}"
                 OCTANE_SERVER: "${OCTANE_SERVER}"
                 OCTANE_PROXY_PORT: "${OCTANE_PROXY_PORT}"
                 OCTANE_RPC_PORT: "${OCTANE_RPC_PORT}"
-                APP_DEBUG: "${APP_DEBUG}"
-                APP_PORT: "${APP_PORT}"
             dockerfile: Dockerfile
         container_name: app
         restart: unless-stopped
@@ -28,6 +29,8 @@ services:
             - ./php/laravel.ini:/usr/local/etc/php/conf.d/laravel.ini
         networks:
             - app-network
+        ports:
+            - "${OCTANE_PROXY_PORT}:8000"
     #Nginx Service
     webserver:
         image: nginx:alpine
