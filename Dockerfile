@@ -156,7 +156,7 @@ RUN echo "command = php -d variables_order=EGPCS /var/www/html/artisan octane:st
 EXPOSE ${OCTANE_PROXY_PORT} ${XDEBUG_CLIENT_PORT} ${OCTANE_RPC_PORT}
 
 #Start server
-#CMD ["/usr/local/src/start-server.sh"]
+CMD ["/usr/local/src/start-server.sh"]
 
 #Start Octane server with Supervisor
 #CMD ["/usr/bin/supervisord"]
