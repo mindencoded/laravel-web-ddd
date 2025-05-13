@@ -1,14 +1,16 @@
 FROM php:8.3.3-fpm
 
+ARG APP_NAME
+ARG APP_ENV
 ARG APP_PORT
 ARG APP_DEBUG
+ARG XDEBUG_CLIENT_HOST
+ARG XDEBUG_CLIENT_PORT
 ARG OCTANE_ENABLED
 ARG OCTANE_HOST
 ARG OCTANE_SERVER
 ARG OCTANE_PROXY_PORT
 ARG OCTANE_RPC_PORT
-ARG XDEBUG_CLIENT_HOST
-ARG XDEBUG_CLIENT_PORT
 
 # Set environment variables
 ENV APP_PORT=$APP_PORT
@@ -64,7 +66,7 @@ RUN echo "xdebug.client_host=${XDEBUG_CLIENT_HOST}" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.remote_handler=dbgp" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.mode=debug" >> ${XDEBUG_CONFIG_FILE} \
     && echo "xdebug.discover_client_host=yes" >> ${XDEBUG_CONFIG_FILE} \
-    && echo "/var/log/nginx/xdebug.log" >> ${XDEBUG_CONFIG_FILE}
+    && echo "xdebug.log=/tmp/xdebug.log" >> ${XDEBUG_CONFIG_FILE}
 
 RUN touch /tmp/xdebug.log \
     && chown www-data:www-data /tmp/xdebug.log \
@@ -108,15 +110,17 @@ RUN composer config --global process-timeout 0 \
 
 RUN if [[ "${OCTANE_ENABLED}" == "true" ]]; then \
         if [[ "${OCTANE_SERVER}" == "roadrunner" ]]; then \
-            composer require spiral/roadrunner-cli spiral/roadrunner-http && \
+            composer require laravel/octane spiral/roadrunner-cli spiral/roadrunner-http && \
             php artisan octane:install --server="roadrunner" && \
             chmod +x ./vendor/bin/rr && \
             ./vendor/bin/rr get-binary --no-interaction && \
+            chmod +x ./rr && \
             chmod +x ./vendor/bin/roadrunner-worker; \
         elif [[ "${OCTANE_SERVER}" == "swoole" ]]; then \
             yes no | pecl install swoole && \
             touch /usr/local/etc/php/conf.d/swoole.ini && \
             echo 'extension=swoole.so' > /usr/local/etc/php/conf.d/swoole.ini && \
+            composer require laravel/octane && \
             php artisan octane:install --server="swoole"; \
         fi \
     fi
@@ -156,7 +160,7 @@ RUN echo "command = php -d variables_order=EGPCS /var/www/html/artisan octane:st
 EXPOSE ${OCTANE_PROXY_PORT} ${XDEBUG_CLIENT_PORT} ${OCTANE_RPC_PORT}
 
 #Start server
-CMD ["/usr/local/src/start-server.sh"]
+#CMD ["/usr/local/src/start-server.sh"]
 
 #Start Octane server with Supervisor
 #CMD ["/usr/bin/supervisord"]

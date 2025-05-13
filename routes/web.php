@@ -15,18 +15,18 @@ use App\Http\Controllers\HomeController;
 |
 */
 
-$myStartTime = microtime(true);
+$myStartTime = number_format(microtime(true), 6, '.', '');
 
 Route::get('/', static function () use ($myStartTime) {
-    $myLocalStartTime = microtime(true);
-    return DateTime::createFromFormat('U.u', $myStartTime)
-            ->format("r (u)") . " - " .
-        DateTime::createFromFormat('U.u', $myLocalStartTime)
-            ->format("r (u)");
+
+    $myStartDateTimeFormat = DateTime::createFromFormat('U.u', $myStartTime)->format("r (u)");
+
+    $myLocalStartDateTimeFormat = DateTime::createFromFormat('U.u', number_format(microtime(true), 6, '.', ''))->format("r (u)");
+
+    return $myStartDateTimeFormat . " - " . $myLocalStartDateTimeFormat;
 });
 
 Route::get('/static-class', static function (MyClass $myClass) {
-    //xdebug_break();
     $myClass->add();
     print $myClass->get();
     return true;
